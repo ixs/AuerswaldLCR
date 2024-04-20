@@ -1,0 +1,11 @@
+---
+# Config File for the Auerswald GroupManager
+
+# PBX IP Address
+auer_address: 192.168.0.240
+
+# PBX User
+auer_admin_user: admin
+
+# PBX Password
+auer_admin_pass: secret
