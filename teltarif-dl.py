@@ -22,6 +22,7 @@ class TeltarifLCRDownloader:
     def __init__(self, config=None) -> None:
         self._load_config(config)
         self.max_alternatives = 3
+        self.html_parser = "lxml"
         self.session = requests.Session()
         self.session.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
@@ -85,7 +86,7 @@ class TeltarifLCRDownloader:
 
     def parse_html_overview(self, input):
         """Detect the parser to use"""
-        soup = BeautifulSoup(input, features="html.parser")
+        soup = BeautifulSoup(input, features=self.html_parser)
         table = soup.find("table", id="erg_table")
         if table.find("th", id="jetztgueltig"):
             # simple table found
@@ -99,7 +100,7 @@ class TeltarifLCRDownloader:
 
         results = {"providers": {}}
 
-        soup = BeautifulSoup(input, features="html.parser")
+        soup = BeautifulSoup(input, features=self.html_parser)
         table = soup.find("table", id="erg_table")
 
         # Get the table footer with the update time
@@ -246,11 +247,16 @@ class TeltarifLCRDownloader:
         return results
 
     def build_xml(self, input):
-        """Build the XML table"""
+        """Build the XML table
+
+        Notes: id lengths: Provider: 4, Netz: 4, Gasse: 4, DynRouting: 4, RoutingEntry: 5
+        """
         root = ET.Element("Slcr4TablesDB")
 
         slcrProvider_table = ET.SubElement(root, "SlcrProvider_table")
-        for entry in self.get_providers(input):
+        for entry in sorted(
+            self.get_providers(input), key=lambda x: int(x["providerId"])
+        ):
             slcrProvider = ET.SubElement(
                 slcrProvider_table,
                 "SlcrProvider",
@@ -260,13 +266,16 @@ class TeltarifLCRDownloader:
             )
 
         slcrNetz_table = ET.SubElement(root, "SlcrNetz_table")
-        for entry in self.get_networks():
+        for entry in sorted(self.get_networks(), key=lambda x: int(x["netzId"])):
             slcrNetz = ET.SubElement(
                 slcrNetz_table, "SlcrNetz", netzId=entry["netzId"], name=entry["name"]
             )
 
         slcrGasse_table = ET.SubElement(root, "SlcrGasse_table")
-        for entry in self.get_ranges(input) + self.get_exceptions():
+        for entry in sorted(
+            self.get_ranges(input) + self.get_exceptions(),
+            key=lambda x: int(x["gassenId"]),
+        ):
             slcrGasse = ET.SubElement(
                 slcrGasse_table,
                 "SlcrGasse",
@@ -279,7 +288,7 @@ class TeltarifLCRDownloader:
 
         slots, entries = self.get_slots(input)
         slcrDynRouting_table = ET.SubElement(root, "SlcrDynRouting_table")
-        for entry in slots:
+        for entry in sorted(slots, key=lambda x: int(x["dynRoutingId"])):
             slcrDynRouting = ET.SubElement(
                 slcrDynRouting_table,
                 "SlcrDynRouting",
@@ -291,7 +300,7 @@ class TeltarifLCRDownloader:
             )
 
         slcrRoutingEntry_table = ET.SubElement(root, "SlcrRoutingEntry_table")
-        for entry in entries:
+        for entry in sorted(entries, key=lambda x: int(x["routingEntryId"])):
             slcrRoutingEntry = ET.SubElement(
                 slcrRoutingEntry_table,
                 "SlcrRoutingEntry",
@@ -321,11 +330,20 @@ class TeltarifLCRDownloader:
                 print(f"Error: {k}-Table maximum number of entries exceeded. {l} > {m}")
                 exit(2)
 
-        ET.indent(tree, space="  ", level=0)
-        return (
-            ET.tostring(root, encoding="unicode", xml_declaration=True, method="xml"),
-            counts,
-        )
+        try:
+            ET.indent(tree, space="  ", level=0)
+        except AttributeError:
+            # Older xml.etree do not have indent support.
+            pass
+        try:
+            return (
+                ET.tostring(
+                    root, encoding="unicode", xml_declaration=True, method="xml"
+                ),
+                counts,
+            )
+        except TypeError:
+            return ET.tostring(root, encoding="unicode", method="xml"), counts
 
     def get_slots(self, input):
         """Get all routes
@@ -383,10 +401,13 @@ class TeltarifLCRDownloader:
                             }
                         )
 
-                    entry_id = self.generate_numeric_id(f"{slot_id},{p['rank']}")
                     provider_name = p["provider"]
                     if p["product"]:
                         provider_name += f" {p['product']}"
+                    entry_id = self.generate_numeric_id(
+                        f"{slot_id},{self.generate_numeric_id(provider_name)},{p['rank']}",
+                        5,
+                    )
                     entries.append(
                         {
                             "routingEntryId": entry_id,
@@ -394,7 +415,7 @@ class TeltarifLCRDownloader:
                             "parentId": str(slot_id),
                             "prio": str(p["rank"]),
                             "routingType": "2",
-                            "routingId": self.generate_numeric_id(provider_name),
+                            "routingId": self.generate_numeric_id(provider_name, 4),
                             "preisProMinute": str(
                                 int(
                                     Decimal(
@@ -426,7 +447,7 @@ class TeltarifLCRDownloader:
             if int(first_slot["schaltStunde"]) > 0:
                 last_slot = sg[-1]
                 slot_id = self.generate_numeric_id(
-                    f"{last_slot['netzId']},{last_slot['tag']},0,0"
+                    f"{last_slot['netzId']},{last_slot['tag']},0,0", 4
                 )
                 slots.append(
                     {
@@ -437,7 +458,7 @@ class TeltarifLCRDownloader:
                         "schaltMinute": "0",
                     }
                 )
-                
+
                 # copy the entries from the last slot to the newly created id
                 for e in entries:
                     if e["parentId"] == last_slot["dynRoutingId"]:
@@ -445,7 +466,7 @@ class TeltarifLCRDownloader:
                         new_element.update(
                             {
                                 "routingEntryId": self.generate_numeric_id(
-                                    f"{slot_id},{e['prio']}"
+                                    f"{slot_id},{e['routingId']},{e['prio']}", 5
                                 ),
                                 "parentId": slot_id,
                             }
@@ -455,26 +476,27 @@ class TeltarifLCRDownloader:
             slots.extend(sg)
             entries.extend(new_entries)
 
-            # Add RoutingEntry elements for the blacklisted routes
-            for exception in self.get_exceptions():
-                entry_id = self.generate_numeric_id(
-                    f"{exception['gasse']},{exception['gasse']}"
+        # Add RoutingEntry elements for the blacklisted routes
+        for exception in self.get_exceptions():
+            entry_id = self.generate_numeric_id(
+                f"{exception['gasse']},{exception['name']}", 5
+            )
+            # We only need prio 3 for blacklist numbers
+            for prio in [3]:
+                entries.append(
+                    {
+                        "routingEntryId": entry_id,
+                        "parentType": "0",
+                        "parentId": str(exception["gassenId"]),
+                        "prio": str(prio),
+                        "routingType": "0",
+                        "routingId": "0",
+                        "preisProMinute": "0",
+                        "preisProVerbg": "0",
+                        "taktErster": "60",
+                        "taktWeiterer": "60",
+                    }
                 )
-                for prio in [1, 2, 3]:
-                    entries.append(
-                        {
-                            "routingEntryId": entry_id,
-                            "parentType": "0",
-                            "parentId": str(exception["gassenId"]),
-                            "prio": str(prio),
-                            "routingType": "0",
-                            "routingId": "0",
-                            "preisProMinute": "0",
-                            "preisProVerbg": "0",
-                            "taktErster": "60",
-                            "taktWeiterer": "60",
-                        }
-                    )
 
         return slots, entries
 
@@ -541,23 +563,9 @@ class TeltarifLCRDownloader:
             networks.append({"name": dest, "netzId": self.generate_numeric_id(dest)})
         return networks
 
-    def generate_numeric_id(self, string):
-        return self.generate_numeric_id_new(string)
-
-    def generate_numeric_id_old(self, string):
-        """Generate a numeric ID from a string"""
-        hash_value = hash(string)
-        hash_value = hash_value % (10 ** 5)
-        id_length = max(3, len(str(hash_value)))
-        return str(hash_value).zfill(id_length)
-
-    def generate_numeric_id_new(self, name):
-        hash_object = hashlib.sha256()
-        hash_object.update(name.encode())
-        hex_digest = hash_object.hexdigest()
-        numeric_id = int(hex_digest, 16)
-        id_range = 10 ** 4  ## Range of up to 5 digits
-        numeric_id %= id_range  # Modulo operation to ensure within the range
+    def generate_numeric_id(self, name, length=4):
+        hex_digest = hashlib.sha256(name.encode()).hexdigest()
+        numeric_id = int(hex_digest, 16) % (10 ** length)  # Ensure we're in length
         return str(numeric_id)
 
 
