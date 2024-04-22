@@ -34,3 +34,29 @@ Rename `auerswald.cfg.yaml.sample` to `auerswald.cfg.yaml` and add your site spe
 `./auerswald-lcr.py erase` flush all LCR tables on the PBX.
 
 In case of trouble, the `--debug` option will enable logging of all data sent over the wire.
+
+# TeltarifLCRDownloader
+
+A small tool to download LCR data from [teltarif.de](www.teltarif.de) and build an Auerswald-readable
+XML file for the least cost router.
+As it looks like Telefon-Sparbuch is not updating anymore, this might come in handy.
+
+_Usage Note:_ Do not hammer the teltarif server with this.
+
+```
+./teltarif-dl.py --help
+usage: teltarif-dl.py [-h] [--config CONFIG] [--test] [--verbose] output_file
+
+Teltarif LCR Downloader
+
+positional arguments:
+  output_file      Output file (mandatory)
+
+options:
+  -h, --help       show this help message and exit
+  --config CONFIG  Config file (optional)
+  --test           Enable test mode
+  --verbose, -v    Increase verbosity level
+```
+
+The resulting file can easily be uploaded to the Auerswald PBX system.
