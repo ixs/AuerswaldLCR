@@ -1,5 +1,20 @@
 # Config file containing credentials
-auerswald-lcr.cfg.yaml
+auerswald.cfg.yaml
+
+# XML Files
+*.xml
+
+# Mac Cruft
+.DS_Store
+
+# venv
+.pyvenv.cfg
+bin/
+include/
+lib/
+
+# downloader cache
+cache/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

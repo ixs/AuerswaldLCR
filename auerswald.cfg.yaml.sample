@@ -1,5 +1,5 @@
 ---
-# Config File for the Auerswald GroupManager
+# Config File for the Auerswald LCR client
 
 # PBX IP Address
 auer_address: 192.168.0.240

@@ -8,6 +8,7 @@ License: GPLv3+
 """
 
 import argparse
+import os.path
 import gzip
 import requests
 import urllib.parse
@@ -64,13 +65,14 @@ class AuerswaldLCR:
         r = self.session.get(f"https://{self.auer_address}{path}")
         return r
 
-    def _send(self, path, params=None, data=None, files=None):
+    def _send(self, path, params=None, data=None, files=None, headers=None):
         """Post generic data to the PBX"""
         r = self.session.post(
             f"https://{self.auer_address}{path}",
             params=params,
             data=data,
             files=files,
+            headers=headers,
         )
         return r
 
@@ -110,8 +112,15 @@ class AuerswaldLCR:
         """Upload and import new LCR XML table"""
         url = "/lcr35datensicherung_import"
         params = {"h_ulfilename": filename}
-        files = {"file": (filename, content, "text/xml")}
-        r = self._send(url, params=params, files=files)
+        files = {"file": (filename, gzip.compress(content), "text/xml")}
+        r = self._send(
+            url,
+            params=params,
+            files=files,
+            headers={
+                "Content-Encoding": "gzip",
+            },
+        )
         return r.json()
 
     def erase_table(self, tbl):
@@ -149,14 +158,21 @@ class AuerswaldLCR:
                     )
                 )
             else:
-                f.write(xml_content)
+                f.write(xml_content.decode())
 
     def upload_xml(self, filename):
         """Cmdline handler for uploading XML"""
         with open(filename, "rb") as f:
-            r = self.upload_lcr_xml("lcr-autogen.xml", f.read())
-        if len(r["errors"]) > 0 or len(r["warnings"]) > 0:
-            print(r["errors"], r["warnings"])
+            r = self.upload_lcr_xml(os.path.basename(filename), f.read())
+        if len(r["errors"]) > 0:
+            print("Error uploading XML")
+            for e in r["errors"]:
+                print(e["err_str"])
+            exit(1)
+        if len(r["warnings"]) > 0:
+            print("Warning uploading XML")
+            for w in r["warnings"]:
+                print(w)
             exit(1)
 
     def main(self):
