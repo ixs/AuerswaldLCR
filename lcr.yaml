@@ -1,0 +1,65 @@
+---
+# LCR Config file for teltarif.de
+
+# Auerswald LCR limits
+limits:
+  Provider: 50
+  Netz: 60
+  Gasse: 1000
+
+# Which destinations do we want LCR data for?
+destinations:
+  - Belgien
+  - Belgien (Mobilfunk)
+  - Deutschland (Mobilfunk)
+  - Dänemark
+  - Dänemark (Mobilfunk)
+  - Frankreich
+  - Frankreich (Mobilfunk)
+  - Griechenland
+  - Griechenland (Mobilfunk)
+  - Großbritannien
+  - Großbritannien (Mobilfunk)
+  - Guatemala
+  - Guatemala (Mobilfunk)
+  - Italien
+  - Italien (Mobilfunk)
+  - Irland
+  - Irland (Mobilfunk)
+  - Niederlande
+  - Niederlande (Mobilfunk)
+  - Polen
+  - Polen (Mobilfunk)
+  - Portugal
+  - Portugal (Mobilfunk)
+  - Rumänien
+  - Rumänien (Mobilfunk)
+  - Schweiz
+  - Schweiz (Mobilfunk)
+  - Serbien
+  - Serbien (Mobilfunk)
+  - Spanien
+  - Spanien (Kanarische Inseln)
+  - Spanien (Balearen)
+  - Spanien (Mobilfunk)
+  - USA
+  - Österreich
+  - Österreich (Mobilfunk)
+
+# No LCR for these numbers
+blacklist:
+  "00800": Kostenlose Servicenummern
+  "010": Betreiberkennzahlen
+  "011": Dienste von sozialem Wert
+  "012": Neuartige Dienste
+  "013": Abstimmungs- und Gewinnspielnummern
+  "018": Service-Dienste
+  "019": Routingnummern
+  "0700": Persönliche Rufnummern
+  "0701": Persönliche Rufnummern (Reserve)
+  "0800": kostenfreie Nummer (Freecall)
+  "0801": kostenfreie Nummer (Reserve)
+  "0900": Frei tarifierbare Mehrwertdienste
+  "11": Notrufdienste
+  "191011": Providerzugangsnummer
+  "19222": Krankentransportnummer
