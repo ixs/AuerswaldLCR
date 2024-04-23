@@ -47,7 +47,7 @@ destinations:
   - Österreich (Mobilfunk)
 
 # No LCR for these numbers
-blacklist:
+blacklist: 
   "00800": Kostenlose Servicenummern
   "010": Betreiberkennzahlen
   "011": Dienste von sozialem Wert
@@ -60,6 +60,6 @@ blacklist:
   "0800": kostenfreie Nummer (Freecall)
   "0801": kostenfreie Nummer (Reserve)
   "0900": Frei tarifierbare Mehrwertdienste
-  "11": Notrufdienste
+  "11": Kurznummern
   "191011": Providerzugangsnummer
   "19222": Krankentransportnummer
