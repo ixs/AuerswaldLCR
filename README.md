@@ -65,3 +65,10 @@ The resulting file can easily be uploaded to the Auerswald PBX system.
 
 `./update.sh` is a script to automate the updating of the LCR tables.  
 This can be called from cron or similar.
+
+# LCR Cache Differ
+
+`./lcr-cache-diff.py` can be used to diff the YAML files from two different
+cache directories to spot differences in the underlying LCR data.
+
+Perfect for trying to understand what changed between downloader runs.
