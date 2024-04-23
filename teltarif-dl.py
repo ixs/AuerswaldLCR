@@ -34,8 +34,12 @@ class TeltarifLCRDownloader:
         self.base_url = (
             "https://www.teltarif.de/tarife/call-by-call/{country}/{network}/"
         )
-        self.base_params = {"gseino": 100, "gsein": 9}
-        self.base_params_stable = {"gssico": 100, "gssic": 9}
+        self.base_params = {
+            "gssico": 75,
+            "gssic": 7,
+            "gseino": 75,
+            "gsein": 7,
+        }
         self.base_params_unused = {
             "zs": "flat",
             "ech": 0,
@@ -86,7 +90,7 @@ class TeltarifLCRDownloader:
                 r = f.read()
         else:
             self.logger.debug(f"Downloading {url}")
-            r = self.session.get(url).text
+            r = self.session.get(url, params=self.base_params).text
             with open(f"{self.script_dir}/cache/{name}.html", "w") as f:
                 f.write(r)
 
@@ -252,9 +256,8 @@ class TeltarifLCRDownloader:
             name = f"{country}_{network}"
             if region:
                 name += f"_{region}"
-            if self.testing:
-                with open(f"{self.script_dir}/cache/{name}.yaml", "w") as f:
-                    f.write(yaml.dump(table))
+            with open(f"{self.script_dir}/cache/{name}.yaml", "w") as f:
+                f.write(yaml.dump(table))
             results.update({dest: table})
         return results
 

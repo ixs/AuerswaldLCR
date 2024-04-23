@@ -16,6 +16,7 @@ if [ ! -d "${script_dir}/venv" ]; then
 fi
 
 # Move existing cache away
+rm -rf "${script_dir}/cache.previous" || true
 mv "${script_dir}/cache" "${script_dir}/cache.previous" || true
 mkdir "${script_dir}/cache" 2> /dev/null || true
 
@@ -34,6 +35,7 @@ if [ "$("${script_dir}/venv/bin/xmldiff" \
 		"${script_dir}/cache/teltarif-${date}.xml" | \
 		grep -c '\[')" -eq "0" ]; then
 	# File is the same, means no change
+	:
 else
 	# File is different than PBX, upload to PBX
 	echo "LCR Tables differ, uploading new tables to PBX..."
