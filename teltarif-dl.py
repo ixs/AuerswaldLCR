@@ -78,16 +78,16 @@ class TeltarifLCRDownloader:
             name += f"_{region}"
             url += f"{region}/"
 
-        if not os.path.exists("f{self.script_dir}/cache/"):
+        if not os.path.exists(f"{self.script_dir}/cache"):
             os.makedirs(f"{self.script_dir}/cache")
-        if self.testing and os.path.exists(f"f{self.script_dir}/cache/{name}.html"):
+        if self.testing and os.path.exists(f"{self.script_dir}/cache/{name}.html"):
             self.logger.debug(f"Using cached cache/{name}.html")
-            with open("f{self.script_dir}/cache/{name}.html", "r") as f:
+            with open(f"{self.script_dir}/cache/{name}.html", "r") as f:
                 r = f.read()
         else:
             self.logger.debug(f"Downloading {url}")
             r = self.session.get(url).text
-            with open("f{self.script_dir}/cache/{name}.html", "w") as f:
+            with open(f"{self.script_dir}/cache/{name}.html", "w") as f:
                 f.write(r)
 
         return r
@@ -253,7 +253,7 @@ class TeltarifLCRDownloader:
             if region:
                 name += f"_{region}"
             if self.testing:
-                with open("f{self.script_dir}/cache/{name}.yaml", "w") as f:
+                with open(f"{self.script_dir}/cache/{name}.yaml", "w") as f:
                     f.write(yaml.dump(table))
             results.update({dest: table})
         return results
