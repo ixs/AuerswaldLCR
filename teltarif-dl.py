@@ -21,11 +21,11 @@ from decimal import Decimal
 
 class TeltarifLCRDownloader:
     def __init__(self, config=None, verbose=0, quiet=False, logger=None) -> None:
+        self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self._load_config(config)
         self.max_alternatives = 3
         self.verbose = verbose
         self.html_parser = "lxml"
-        self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self.session = requests.Session()
         self.session.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
