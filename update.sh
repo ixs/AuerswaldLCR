@@ -15,7 +15,10 @@ if [ ! -d "${script_dir}/venv" ]; then
 	"${script_dir}/venv/bin/pip" install xmldiff
 fi
 
-mkdir "${script_dir}/cache" 2> /dev/null|| true
+# Move existing cache away
+mv "${script_dir}/cache" "${script_dir}/cache.previous" || true
+mkdir "${script_dir}/cache" 2> /dev/null || true
+
 "${script_dir}/venv/bin/python3" \
 	"${script_dir}/teltarif-dl.py" \
 	--quiet "${script_dir}/cache/teltarif-${date}.xml"
@@ -30,8 +33,7 @@ if [ "$("${script_dir}/venv/bin/xmldiff" \
 		"${script_dir}/cache/current-${date}.xml" \
 		"${script_dir}/cache/teltarif-${date}.xml" | \
 		grep -c '\[')" -eq "0" ]; then
-	# File is the same, means no change, we can clean up
-	rm -rf "${script_dir}/cache"
+	# File is the same, means no change
 else
 	# File is different than PBX, upload to PBX
 	echo "LCR Tables differ, uploading new tables to PBX..."
@@ -39,8 +41,15 @@ else
 		"${script_dir}/auerswald-lcr.py" \
 		upload \
 		"${script_dir}/cache/teltarif-${date}.xml"
+
+	# Visualize changes
+	echo "Differences in LCR data"
+	"${script_dir}/venv/bin/python3" \
+		"${script_dir}/lcr-cache-diff.py" \
+		"${script_dir}/cache.previous" \
+		"${script_dir}/cache"
+
 	# Archive the cache for debugging
 	tar -cz -f "${script_dir}/cache.tar.gz" -C "${script_dir}" ./cache
 	mv "${script_dir}/cache.tar.gz" "${script_dir}/cache-${date}.tar.gz"
-	rm -rf "${script_dir}/cache"
 fi
