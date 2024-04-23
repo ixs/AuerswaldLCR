@@ -42,5 +42,5 @@ else
 	# Archive the cache for debugging
 	tar -cz -f "${script_dir}/cache.tar.gz" -C "${script_dir}" ./cache
 	mv "${script_dir}/cache.tar.gz" "${script_dir}/cache-${date}.tar.gz"
-	rm -rf cache
+	rm -rf "${script_dir}/cache"
 fi

@@ -60,3 +60,8 @@ options:
 ```
 
 The resulting file can easily be uploaded to the Auerswald PBX system.
+
+# Automatic updater
+
+`./update.sh` is a script to automate the updating of the LCR tables.  
+This can be called from cron or similar.
