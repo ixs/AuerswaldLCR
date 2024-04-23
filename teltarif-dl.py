@@ -9,6 +9,7 @@ License: GPLv3+
 
 import argparse
 import hashlib
+import logging
 import os
 import os.path
 import requests
@@ -16,12 +17,14 @@ import yaml
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from decimal import Decimal
+from pprint import pprint
 
 
 class TeltarifLCRDownloader:
-    def __init__(self, config=None) -> None:
+    def __init__(self, config=None, verbose=0, quiet=False, logger=None) -> None:
         self._load_config(config)
         self.max_alternatives = 3
+        self.verbose = verbose
         self.html_parser = "lxml"
         self.session = requests.Session()
         self.session.headers = {
@@ -51,6 +54,11 @@ class TeltarifLCRDownloader:
         }
         self.testing = False
 
+        self.logger = logger or logging.getLogger(__name__)
+        log_level = logging.DEBUG if self.verbose > 0 else logging.INFO
+        log_level = logging.ERROR if quiet else log_level
+        self.logger.setLevel(log_level)
+
     def _load_config(self, file=None) -> None:
         if not file:
             file = "lcr.yaml"
@@ -70,16 +78,18 @@ class TeltarifLCRDownloader:
             if not os.path.exists("cache/"):
                 os.makedirs("cache")
             if not os.path.exists(f"cache/{name}.html"):
-                print(f"cache/{name}.html not found, downloading from {url}")
+                self.logger.debug(
+                    f"cache/{name}.html not found, downloading from {url}"
+                )
                 r = self.session.get(url).text
                 with open(f"cache/{name}.html", "w") as f:
                     f.write(r)
             else:
-                print(f"Using cached cache/{name}.html")
+                self.logger.debug(f"Using cached cache/{name}.html")
                 with open(f"cache/{name}.html", "r") as f:
                     r = f.read()
         else:
-            print(f"Downloading {url}")
+            self.logger.debug(f"Downloading {url}")
             r = self.session.get(url).text
 
         return r
@@ -241,8 +251,9 @@ class TeltarifLCRDownloader:
             name = f"{country}_{network}"
             if region:
                 name += f"_{region}"
-            with open(f"cache/{name}.yaml", "w") as f:
-                f.write(yaml.dump(table))
+            if self.testing:
+                with open(f"cache/{name}.yaml", "w") as f:
+                    f.write(yaml.dump(table))
             results.update({dest: table})
         return results
 
@@ -327,7 +338,9 @@ class TeltarifLCRDownloader:
         for k, l in counts.items():
             m = self.config["limits"].get(k)
             if m and l > m:
-                print(f"Error: {k}-Table maximum number of entries exceeded. {l} > {m}")
+                self.logger.error(
+                    f"Error: {k}-Table maximum number of entries exceeded. {l} > {m}"
+                )
                 exit(2)
 
         try:
@@ -360,7 +373,7 @@ class TeltarifLCRDownloader:
         1: besetzt
         2: lcr
         """
-        slots = []
+        grouped_slots = {}
         entries = []
         for dest, data in input.items():
             for slot, prov in data["providers"].items():
@@ -388,13 +401,14 @@ class TeltarifLCRDownloader:
                         hour, minute = hour.split(":")
                     else:
                         minute = 0
-                    slot_id = self.generate_numeric_id(f"{dest},{day},{hour},{minute}")
+                    netzId = self.generate_numeric_id(dest)
+                    slot_id = self.generate_numeric_id(f"{netzId},{dest},{day},{hour},{minute}")
                     # only _one_ provider needed
                     if p["rank"] <= 1:
-                        slots.append(
+                        grouped_slots.setdefault((netzId, day), []).append(
                             {
                                 "dynRoutingId": slot_id,
-                                "netzId": self.generate_numeric_id(dest),
+                                "netzId": netzId,
                                 "tag": str(day),
                                 "schaltStunde": str(hour),
                                 "schaltMinute": str(minute),
@@ -420,7 +434,7 @@ class TeltarifLCRDownloader:
                                 int(
                                     Decimal(
                                         p["price"]
-                                        .split(maxsplit=1)[0]
+                                        .rsplit(maxsplit=2)[-2]
                                         .replace(",", ".")
                                     )
                                     * 100
@@ -432,18 +446,15 @@ class TeltarifLCRDownloader:
                         }
                     )
 
-        # Iterate over slots filling in the 00:00 switch if not already present
-        grouped_slots = {}
-        for slot in slots:
-            key = tuple(slot.get(k) for k in ("netzId", "tag"))
-            grouped_slots.setdefault(key, []).append(slot)
-
         slots = []
-        new_entries = []
-
-        for sg in list(grouped_slots.values()):
+        # Iterate over slots filling in the 00:00 switch if not already present
+        for sg in [
+            sorted(sublist, key=lambda x: int(x["schaltStunde"]))
+            for sublist in list(grouped_slots.values())
+        ]:
             # First slot is not at 00:00, need to add last slot again as 00:00 starting time.
             first_slot = sg[0]
+            new_entries = []
             if int(first_slot["schaltStunde"]) > 0:
                 last_slot = sg[-1]
                 slot_id = self.generate_numeric_id(
@@ -462,12 +473,13 @@ class TeltarifLCRDownloader:
                 # copy the entries from the last slot to the newly created id
                 for e in entries:
                     if e["parentId"] == last_slot["dynRoutingId"]:
+                        entry_id = self.generate_numeric_id(
+                            f"{slot_id},{e['prio']},{e['parentId']},{e['routingId']}", 5
+                        )
                         new_element = e.copy()
                         new_element.update(
                             {
-                                "routingEntryId": self.generate_numeric_id(
-                                    f"{slot_id},{e['routingId']},{e['prio']}", 5
-                                ),
+                                "routingEntryId": entry_id,
                                 "parentId": slot_id,
                             }
                         )
@@ -575,29 +587,41 @@ def main():
     parser.add_argument("output_file", help="Output file (mandatory)")
     parser.add_argument("--config", help="Config file (optional)")
     parser.add_argument("--test", action="store_true", help="Enable test mode")
+    parser.add_argument("--quiet", action="store_true", help="Quiet mode, only errors")
     parser.add_argument(
         "--verbose", "-v", action="count", default=0, help="Increase verbosity level"
     )
 
     args = parser.parse_args()
 
-    # Access the parsed arguments
-    config_file = args.config
-    verbosity_level = args.verbose
+    # Set up logging
+    log_format = "%(levelname)s: %(message)s"
+    log_level = logging.DEBUG if args.verbose > 0 else logging.INFO
+    logging.basicConfig(level=log_level, format=log_format)
+    logger = logging.getLogger(__name__)
+    quiet = False
+    if args.output_file == "-" or args.quiet:
+        logger.setLevel(logging.ERROR)
+        quiet = True
 
-    tt = TeltarifLCRDownloader(config=args.config)
+    tt = TeltarifLCRDownloader(
+        config=args.config, verbose=args.verbose, quiet=quiet, logger=logger
+    )
     if args.test:
-        print(
+        logger.info(
             "Enabling test-mode, no downloads will be done, cached data used instead."
         )
     tt.testing = args.test
     results = tt.fetch_all_tables()
     xml, counts = tt.build_xml(results)
-    with open(args.output_file, "w") as f:
-        f.write(xml)
-    print(f"LCR Data written to {args.output_file}.")
+    if args.output_file == "-":
+        print(xml)
+    else:
+        with open(args.output_file, "w") as f:
+            f.write(xml)
+        logger.info(f"LCR Data written to {args.output_file}.")
     for k, v in counts.items():
-        print(f"{v} {k}_table entries")
+        logger.info(f"{v} {k}_table entries")
 
 
 if __name__ == "__main__":
