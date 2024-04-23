@@ -37,8 +37,9 @@ class AuerswaldLCR:
 
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-    def _load_config(self, file=f"{self.script_dir}/auerswald.cfg.yaml"):
+    def _load_config(self):
         """Load the configfile"""
+        file=f"{self.script_dir}/auerswald.cfg.yaml"
         with open(file, "r") as f:
             data = yaml.safe_load(f)
         self.auer_address = data["auer_address"]
