@@ -65,7 +65,7 @@ class TeltarifLCRDownloader:
 
     def _load_config(self, file=None) -> None:
         if not file:
-            file = "f{self.script_dir}/lcr.yaml"
+            file = f"{self.script_dir}/lcr.yaml"
         with open(file, "rb") as f:
             self.config = yaml.safe_load(f)
 
