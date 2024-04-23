@@ -87,11 +87,6 @@ class TeltarifLCRDownloader:
         else:
             self.logger.debug(f"Downloading {url}")
             r = self.session.get(url).text
-
-            self.logger.debug(
-                f"cache/{name}.html not found, downloading from {url}"
-            )
-            r = self.session.get(url).text
             with open("f{self.script_dir}/cache/{name}.html", "w") as f:
                 f.write(r)
 
