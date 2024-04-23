@@ -69,11 +69,15 @@ class TeltarifLCRDownloader:
         """Download the table from Teltarif, optionally using cache"""
         name = f"{country}_{network}"
         url = self.base_url.format(country=country, network=network)
+
+        # Special case usa, there is no "festnetz" network, just the bare country url
         if country == "usa" and network == "festnetz":
             url = "https://www.teltarif.de/tarife/call-by-call/usa/"
+
         if region:
             name += f"_{region}"
             url += f"{region}/"
+
         if self.testing:
             if not os.path.exists("cache/"):
                 os.makedirs("cache")
@@ -128,8 +132,10 @@ class TeltarifLCRDownloader:
 
         times = []
         for cell in table.find_all("th"):
-            times.append(cell.text.strip().splitlines()[0])
-            results["providers"].update({cell.text.strip().splitlines()[0]: []})
+            slot = cell.text.strip().splitlines()[0]
+            times.append(slot)
+            self.logger.debug("Found timeslot %s", slot)
+            results["providers"].update({slot: []})
 
         # Get data rows, skip the first row as it is non-data.
         for row in table.find_all("tr")[1:]:
@@ -139,9 +145,11 @@ class TeltarifLCRDownloader:
                 if len(list(cells[0].strings)) == 3
                 else int(list(cells[0].strings)[2].strip())
             )
+            self.logger.debug("Found entry with rank %d", ranking)
 
             for idx in range(len(times)):
                 data = list(cells[idx + 1].stripped_strings)
+                self.logger.debug("Extracted text for provider: %s", data)
                 product_url = cells[idx + 1].find("a").attrs["href"]
                 price = data[0].replace("\xa0", " ")
                 pulse = (
@@ -149,25 +157,24 @@ class TeltarifLCRDownloader:
                     if "Alle Tarife haben den Takt 60/60" in results["notes"]
                     else None
                 )
-                product = (
-                    "Call by Call"
-                    if "Alle Tarife heißen Call by Call" in results["notes"]
-                    else None
-                )
+                if "Alle Tarife heißen Call by Call" in results["notes"]:
+                    product = "Call by Call"
+                else:
+                    product = data.pop()
                 prefix = data[-2]
                 provider = data[-1]
-                results["providers"][times[idx]].append(
-                    {
-                        "rank": ranking,
-                        "provider": provider,
-                        "product": product,
-                        "prefix": prefix,
-                        "price": price,
-                        "pulse": pulse,
-                        "provider_url": None,
-                        "product_url": product_url,
-                    }
-                )
+                parsed = {
+                    "rank": ranking,
+                    "provider": provider,
+                    "product": product,
+                    "prefix": prefix,
+                    "price": price,
+                    "pulse": pulse,
+                    "provider_url": None,
+                    "product_url": product_url,
+                }
+                self.logger.debug("Parsed entry as %s", parsed)
+                results["providers"][times[idx]].append(parsed)
         return results
 
     def parse_html_overview_complex(self, input):
@@ -402,7 +409,9 @@ class TeltarifLCRDownloader:
                     else:
                         minute = 0
                     netzId = self.generate_numeric_id(dest)
-                    slot_id = self.generate_numeric_id(f"{netzId},{dest},{day},{hour},{minute}")
+                    slot_id = self.generate_numeric_id(
+                        f"{netzId},{dest},{day},{hour},{minute}"
+                    )
                     # only _one_ provider needed
                     if p["rank"] <= 1:
                         grouped_slots.setdefault((netzId, day), []).append(
