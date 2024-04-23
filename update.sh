@@ -35,7 +35,7 @@ if [ "$("${script_dir}/venv/bin/xmldiff" \
 		"${script_dir}/cache/teltarif-${date}.xml" | \
 		grep -c '\[')" -eq "0" ]; then
 	# File is the same, means no change
-	:
+	true
 else
 	# File is different than PBX, upload to PBX
 	echo "LCR Tables differ, uploading new tables to PBX..."
