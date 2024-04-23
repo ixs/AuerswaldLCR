@@ -79,7 +79,7 @@ class TeltarifLCRDownloader:
             url += f"{region}/"
 
         if not os.path.exists("f{self.script_dir}/cache/"):
-            os.makedirs("cache")
+            os.makedirs(f"{self.script_dir}/cache")
         if self.testing and os.path.exists(f"f{self.script_dir}/cache/{name}.html"):
             self.logger.debug(f"Using cached cache/{name}.html")
             with open("f{self.script_dir}/cache/{name}.html", "r") as f:

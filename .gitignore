@@ -15,6 +15,7 @@ lib/
 
 # downloader cache
 cache/
+cache[-\.]*/
 cache-*.tar.gz
 
 # Byte-compiled / optimized / DLL files
