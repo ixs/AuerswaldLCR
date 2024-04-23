@@ -21,6 +21,7 @@ class AuerswaldLCR:
     """Auerswald LCR client"""
 
     def __init__(self):
+        self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self.ssl_verify = False
         self.uuid = None
         self._load_config()
@@ -36,7 +37,7 @@ class AuerswaldLCR:
 
             requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
-    def _load_config(self, file="auerswald.cfg.yaml"):
+    def _load_config(self, file=f"{self.script_dir}/auerswald.cfg.yaml"):
         """Load the configfile"""
         with open(file, "r") as f:
             data = yaml.safe_load(f)
