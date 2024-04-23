@@ -25,6 +25,7 @@ class TeltarifLCRDownloader:
         self.max_alternatives = 3
         self.verbose = verbose
         self.html_parser = "lxml"
+        self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self.session = requests.Session()
         self.session.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.15",
@@ -77,23 +78,22 @@ class TeltarifLCRDownloader:
             name += f"_{region}"
             url += f"{region}/"
 
-        if self.testing:
-            if not os.path.exists("cache/"):
-                os.makedirs("cache")
-            if not os.path.exists(f"cache/{name}.html"):
-                self.logger.debug(
-                    f"cache/{name}.html not found, downloading from {url}"
-                )
-                r = self.session.get(url).text
-                with open(f"cache/{name}.html", "w") as f:
-                    f.write(r)
-            else:
-                self.logger.debug(f"Using cached cache/{name}.html")
-                with open(f"cache/{name}.html", "r") as f:
-                    r = f.read()
+        if not os.path.exists("f{self.script_dir}/cache/"):
+            os.makedirs("cache")
+        if self.testing and os.path.exists(f"f{self.script_dir}/cache/{name}.html"):
+            self.logger.debug(f"Using cached cache/{name}.html")
+            with open("f{self.script_dir}/cache/{name}.html", "r") as f:
+                r = f.read()
         else:
             self.logger.debug(f"Downloading {url}")
             r = self.session.get(url).text
+
+            self.logger.debug(
+                f"cache/{name}.html not found, downloading from {url}"
+            )
+            r = self.session.get(url).text
+            with open("f{self.script_dir}/cache/{name}.html", "w") as f:
+                f.write(r)
 
         return r
 
@@ -258,7 +258,7 @@ class TeltarifLCRDownloader:
             if region:
                 name += f"_{region}"
             if self.testing:
-                with open(f"cache/{name}.yaml", "w") as f:
+                with open("f{self.script_dir}/cache/{name}.yaml", "w") as f:
                     f.write(yaml.dump(table))
             results.update({dest: table})
         return results
@@ -350,14 +350,18 @@ class TeltarifLCRDownloader:
                 exit(2)
 
         try:
-            ET.indent(tree, space="  ", level=0)
+            ET.indent(tree, space="", level=0)
         except AttributeError:
             # Older xml.etree do not have indent support.
             pass
         try:
             return (
                 ET.tostring(
-                    root, encoding="unicode", xml_declaration=True, method="xml"
+                    root,
+                    encoding="unicode",
+                    xml_declaration=True,
+                    method="xml",
+                    short_empty_elements=False,
                 ),
                 counts,
             )
