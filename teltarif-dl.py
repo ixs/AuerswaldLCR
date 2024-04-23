@@ -17,7 +17,6 @@ import yaml
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
 from decimal import Decimal
-from pprint import pprint
 
 
 class TeltarifLCRDownloader:
