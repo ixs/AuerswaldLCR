@@ -176,7 +176,7 @@ class TeltarifLCRDownloader:
         return results
 
     def parse_html_overview_complex(self, input):
-        """Parse the "simple" html page and extract data"""
+        """Parse the "complex" html page and extract data"""
 
         slot = "Mo-So ganztags"
         results = {"providers": {slot: []}}

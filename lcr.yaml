@@ -7,6 +7,12 @@ limits:
   Netz: 60
   Gasse: 1000
 
+# Fallback configuration (lcr, no lcr, busy)
+fallbacks:
+  - lcr
+  - lcr
+  - no lcr
+
 # Which destinations do we want LCR data for?
 destinations:
   - Belgien

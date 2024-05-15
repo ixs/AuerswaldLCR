@@ -30,28 +30,26 @@ def compare_yaml_files(dir1, dir2):
             data2 = yaml.safe_load(f2)
 
         logger.debug("Comparing file: %s", file)
-        compare_dicts(data1, data2, logger)
+        compare_dicts(data1, data2, file, logger)
 
-def compare_dicts(dict1, dict2, logger, path=""):
+def compare_dicts(dict1, dict2, file, logger, path=""):
     for key in dict1.keys() | dict2.keys():
         value1 = dict1.get(key)
         value2 = dict2.get(key)
 
         if isinstance(value1, dict) and isinstance(value2, dict):
-            compare_dicts(value1, value2, logger, path + "/" + str(key))
+            compare_dicts(value1, value2, file, logger, path + "/" + str(key))
         elif isinstance(value1, list) and isinstance(value2, list):
             if len(value1) != len(value2):
-                logger.info("Difference in %s: Length of lists %s and %s differs", path, value1, value2)
+                logger.info("%s: Difference in %s: Length of lists %s and %s differs", file, path, value1, value2)
             else:
                 for i, (item1, item2) in enumerate(zip(value1, value2)):
                     if isinstance(item1, dict) and isinstance(item2, dict):
-                        compare_dicts(item1, item2, logger, path + "/" + str(key) + f"[{i}]")
+                        compare_dicts(item1, item2, file, logger, path + "/" + str(key) + f"[{i}]")
                     elif item1 != item2:
-                        logger.info("Difference in %s: %s[%d] -> %s vs %s", path, key, i, item1, item2)
+                        logger.info("%s: Difference in %s: %s[%d] -> %s vs %s", file, path, key, i, item1, item2)
         elif value1 != value2:
-            logger.info("Difference in %s: %s -> %s vs %s", path, key, value1, value2)
-
-
+            logger.info("%s: Difference in %s: %s -> %s vs %s", file, path, key, value1, value2)
 
 def main():
     parser = argparse.ArgumentParser(description='Compare YAML files in two directories')
