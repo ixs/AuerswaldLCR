@@ -23,7 +23,7 @@ class TeltarifLCRDownloader:
     def __init__(self, config=None, verbose=0, quiet=False, logger=None) -> None:
         self.script_dir = os.path.dirname(os.path.realpath(__file__))
         self._load_config(config)
-        self.max_alternatives = 3
+        self.max_alternatives = 2
         self.verbose = verbose
         self.html_parser = "lxml"
         self.session = requests.Session()
@@ -347,24 +347,32 @@ class TeltarifLCRDownloader:
                 )
                 exit(2)
 
+        xml_data = None
         try:
             ET.indent(tree, space="", level=0)
         except AttributeError:
             # Older xml.etree do not have indent support.
             pass
         try:
-            return (
-                ET.tostring(
-                    root,
-                    encoding="unicode",
-                    xml_declaration=True,
-                    method="xml",
-                    short_empty_elements=False,
-                ),
-                counts,
+            xml_data = ET.tostring(
+                root,
+                encoding="unicode",
+                xml_declaration=True,
+                method="xml",
+                short_empty_elements=False,
             )
+
         except TypeError:
-            return ET.tostring(root, encoding="unicode", method="xml"), counts
+            xml_data = ET.tostring(root, encoding="unicode", method="xml")
+
+        # Reformat XML data to *really* look like what we get back from the Auerswald PBX
+        xml_data = (
+            xml_data.replace(
+                "<?xml version='1.0' encoding='utf-8'?>", '<?xml version="1.0"?>'
+            )
+            + "\n"
+        )
+        return (xml_data, counts)
 
     def get_slots(self, input):
         """Get all routes
@@ -386,7 +394,25 @@ class TeltarifLCRDownloader:
         for dest, data in input.items():
             for slot, prov in data["providers"].items():
                 for p in prov:
+                    if p["rank"] > 3:
+                        # Soft-LCR only does 3 LCR entries per destination
+                        break
                     if p["rank"] > self.max_alternatives:
+                        # No LCR entry
+                        entries.append(
+                            {
+                                "routingEntryId": entry_id,
+                                "parentType": "1",
+                                "parentId": str(slot_id),
+                                "prio": str(p["rank"]),
+                                "routingType": "0",
+                                "routingId": "0",
+                                "preisProMinute": "0",
+                                "preisProVerbg": "0",
+                                "taktErster": "60",
+                                "taktWeiterer": "60",
+                            }
+                        )
                         break
                     if slot.startswith("Mo-Fr"):
                         day = 31
