@@ -2,7 +2,7 @@
 
 Update the Least-Cost-Router tables in an Auerswald PBX system.
 
-Current Auerswald PBX system offer a least-cost-router that allows to route calls via various providers.
+Current Auerswald PBX system offer a [least-cost-router](https://docs.auerswald.de/COMpact_5200_5500_R/Help_en_12/index.html#page/Buch1/lcr_concept.html) that allows to route calls via various providers.
 
 This is a client for the Soft-LCR 4.0 interface.
 
